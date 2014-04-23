@@ -1,0 +1,12 @@
+bin
+parts
+eggs
+develop-eggs
+.installed.cfg
+.*.sw?
+*.pyc
+*.egg-info
+dist
+build
+bower_components
+deps
