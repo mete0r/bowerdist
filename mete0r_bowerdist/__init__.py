@@ -37,12 +37,18 @@ def get_components_directory(root_directory):
     return 'bower_components'
 
 
-def load_component_from_directory(directory=''):
-    path = os.path.join(directory, 'bower.json')
+def load_component_from_directory(directory='', fixup_bower_json_path=None):
+    path = fixup_bower_json_path or os.path.join(directory, 'bower.json')
     with file(path) as f:
         component = json.load(f)
     component['_dir'] = directory
     return component
+
+
+def find_fixup_bower_json(fixup_directory, component_name):
+    path = os.path.join(fixup_directory, component_name, 'bower.json')
+    if os.path.exists(path):
+        return path
 
 
 class Project:
@@ -51,9 +57,11 @@ class Project:
     bower_executable = 'bower'
     bower_offline = False
 
-    def __init__(self, components_directory, root_component):
+    def __init__(self, components_directory, root_component,
+                 fixup_directory=None):
         self.components_directory = components_directory
         self.root_component = root_component
+        self.fixup_directory = fixup_directory
 
     @classmethod
     def load(cls, root_directory=''):
@@ -61,12 +69,18 @@ class Project:
         components_directory = os.path.join(root_directory,
                                             components_directory)
         root_component = load_component_from_directory(root_directory)
+        fixup_directory = os.path.join(root_directory, '.bowerdist/fixups')
         return cls(components_directory=components_directory,
-                   root_component=root_component)
+                   root_component=root_component,
+                   fixup_directory=fixup_directory)
 
     @property
     def root_directory(self):
         return self.root_component['_dir']
+
+    def find_fixup_bower_json(self, name):
+        if self.fixup_directory:
+            return find_fixup_bower_json(self.fixup_directory, name)
 
     def load_component(self, name):
         comp_dir = os.path.join(self.components_directory, name)
@@ -75,8 +89,12 @@ class Project:
                           root_directory=self.root_directory,
                           bower_executable=self.bower_executable,
                           offline=self.bower_offline)
+
+        fixup_bower_json_path = self.find_fixup_bower_json(name)
+
         try:
-            return load_component_from_directory(comp_dir)
+            return load_component_from_directory(comp_dir,
+                                                 fixup_bower_json_path)
         except Exception as e:
             logger.warning('can\'t load component %s (at %s): skipping', name,
                            comp_dir)
